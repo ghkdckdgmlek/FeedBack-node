@@ -5,12 +5,13 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const { Readable } = require('stream');
 const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-const mongoUrl = "mongodb+srv://ckdgml1302:admin@cluster0.cw4wxud.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const mongoUrl = process.env.MONGO_URL;
 
 mongoose.connect(mongoUrl)
   .then(() => console.log("Database connected"))
