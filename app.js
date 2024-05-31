@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
-const { Readable } = require('stream'); // 추가된 stream 모듈
+const { Readable } = require('stream');
 const cors = require('cors');
 
 const app = express();
 app.use(express.json());
-app.use(cors());  // CORS 설정 추가
+app.use(cors());
 
 const mongoUrl = "mongodb+srv://ckdgml1302:admin@cluster0.cw4wxud.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
@@ -37,15 +37,20 @@ app.get("/", (req, res) => {
 
 app.post("/register", async (req, res) => {
   const { name, email, mobile, password } = req.body;
-  const oldUser = await User.findOne({ email });
 
-  if (oldUser) {
-    return res.send({ status: "error", message: "이미 존재하는 사용자입니다!" });
-  }
+  try {
+    const existingEmailUser = await User.findOne({ email });
+    if (existingEmailUser) {
+      return res.status(400).send({ status: "error", message: "이미 존재하는 이메일입니다." });
+    }
+
+    const existingMobileUser = await User.findOne({ mobile });
+    if (existingMobileUser) {
+      return res.status(400).send({ status: "error", message: "이미 존재하는 휴대폰 번호입니다." });
+    }
 
   const encryptedPassword = await bcrypt.hash(password, 10);
 
-  try {
     await User.create({
       name,
       email,
@@ -79,7 +84,7 @@ app.post("/login", async (req, res) => {
     res.send({ status: "ok", token: token });
   } catch (error) {
     console.error('Error during user login:', error);
-    res.status(500).send({ status: "error", message: error.message });
+    res.status(500).send({ status: "error", message: "로그인 중 오류가 발생했습니다." });
   }
 });
 
@@ -195,7 +200,40 @@ app.delete('/recordings/:id', verifyToken, async (req, res) => {
   }
 });
 
+// 사용자 삭제 엔드포인트 (회원 탈퇴)
+app.post('/deleteUser', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
 
+    if (!user) {
+      return res.status(404).send({ status: 'error', message: '사용자를 찾을 수 없습니다.' });
+    }
+
+    // 사용자와 관련된 모든 녹음 파일 삭제
+    const recordings = await Recording.find({ userId: req.userId });
+    for (const recording of recordings) {
+      try {
+        const fileId = new mongoose.Types.ObjectId(recording.fileId);
+        await gfs.delete(fileId);
+      } catch (error) {
+        if (error.message.includes('File not found')) {
+          console.warn('File not found in GridFS, skipping deletion:', recording.fileId);
+        } else {
+          console.error('Error deleting file from GridFS:', error);
+        }
+      }
+    }
+    await Recording.deleteMany({ userId: req.userId });
+
+    // 사용자 삭제
+    await User.deleteOne({ _id: req.userId });
+
+    res.send({ status: 'ok', message: '회원 탈퇴가 완료되었습니다.' });
+  } catch (error) {
+    console.error('Error during user deletion:', error);
+    res.status(500).send({ status: 'error', message: '회원 탈퇴 중 오류가 발생했습니다.' });
+  }
+});
 
 app.listen(5001, () => {
   console.log("Node.js 서버가 시작되었습니다.");
