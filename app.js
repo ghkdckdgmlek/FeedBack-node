@@ -10,7 +10,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());  // CORS 설정 추가
 
-const mongoUrl = "mongodb+srv://ckdgml1302:admin@cluster0.cw4wxud.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const mongoUrl = "${YOUR_URL}";
 
 mongoose.connect(mongoUrl)
   .then(() => console.log("Database connected"))
