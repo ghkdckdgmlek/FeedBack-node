@@ -8,7 +8,7 @@ const cors = require('cors');
 
 const app = express();
 app.use(express.json());
-app.use(cors());  // CORS 설정 추가
+app.use(cors());  
 
 const mongoUrl = "${YOUR_URL}";
 
